@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Journal</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1e1e2f;
+    color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background: #292950;
+    padding: 20px;
+    text-align: center;
+    font-size: 2em;
+    font-weight: bold;
+  }
+  main {
+    padding: 20px;
+    max-width: 800px;
+    margin: auto;
+  }
+  input, select, textarea, button {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    font-size: 1em;
+  }
+  button {
+    background: #4caf50;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #45a049;
+  }
+  .trade {
+    background: #333366;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+  }
+  .stats {
+    background: #222244;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+  }
+  .stop {
+    color: #ff5555;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<header>Trading Journal</header>
+<main>
+  <h2>Session Status: <span id="status">ACTIVE</span></h2>
+  <div class="stats">
+      <p>Trades Today: <span id="tradeCount">0</span>/6</p>
+      <p>Win Streak: <span id="winStreak">0</span></p>
+      <p>Loss Streak: <span id="lossStreak">0</span></p>
+  </div>
+
+  <h3>Add Trade</h3>
+  <form id="tradeForm">
+      <select id="result" required>
+          <option value="">Select Result</option>
+          <option value="Win">Win</option>
+          <option value="Loss">Loss</option>
+      </select>
+      <select id="strategy" required>
+          <option value="">Select Strategy</option>
+          <option value="QM Setup">QM Setup</option>
+          <option value="Doji Break">Doji Break</option>
+          <option value="Common Point of Rejection">Common Point of Rejection</option>
+          <option value="Third Touch Breakout">Third Touch Breakout</option>
+          <option value="Price Range Trade">Price Range Trade</option>
+      </select>
+      <textarea id="reason" placeholder="Reason for trade" required></textarea>
+      <textarea id="confirmation" placeholder="Confirmation for trade" required></textarea>
+      <select id="followRules" required>
+          <option value="">Did you follow rules?</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+      </select>
+      <button type="submit">Add Trade</button>
+  </form>
+
+  <h3>Weekly Trades</h3>
+  <div id="tradesList"></div>
+  <button id="deleteWeek">Delete This Week's Data</button>
+
+<script>
+const tradeForm = document.getElementById('tradeForm');
+const tradesList = document.getElementById('tradesList');
+const tradeCountEl = document.getElementById('tradeCount');
+const winStreakEl = document.getElementById('winStreak');
+const lossStreakEl = document.getElementById('lossStreak');
+const statusEl = document.getElementById('status');
+const deleteWeekBtn = document.getElementById('deleteWeek');
+
+let week = 'week-' + getWeekNumber(new Date());
+let trades = JSON.parse(localStorage.getItem(week)) || [];
+let winStreak = 0;
+let lossStreak = 0;
+
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+// Calculate last consecutive streak
+function calculateStreaks() {
+    winStreak = 0;
+    lossStreak = 0;
+    for (let i = trades.length - 1; i >= 0; i--) {
+        if (trades[i].result === 'Win') {
+            if (lossStreak > 0) break;
+            winStreak++;
+        } else {
+            if (winStreak > 0) break;
+            lossStreak++;
+        }
+    }
+}
+
+function updateStats() {
+    tradeCountEl.textContent = trades.length;
+    winStreakEl.textContent = winStreak;
+    lossStreakEl.textContent = lossStreak;
+    if(trades.length >= 6 || lossStreak >=2 || winStreak >=3) {
+        statusEl.textContent = 'STOP';
+        statusEl.classList.add('stop');
+        tradeForm.querySelector('button').disabled = true;
+    } else {
+        statusEl.textContent = 'ACTIVE';
+        statusEl.classList.remove('stop');
+        tradeForm.querySelector('button').disabled = false;
+    }
+}
+
+function renderTrades() {
+    tradesList.innerHTML = '';
+    trades.forEach((t, index) => {
+        tradesList.innerHTML += `<div class="trade">
+            <p><strong>Trade ${index+1}</strong></p>
+            <p>Result: <span style="color:${t.result==='Win'?'#4caf50':'#ff5555'}">${t.result}</span></p>
+            <p>Strategy: ${t.strategy}</p>
+            <p>Reason: ${t.reason}</p>
+            <p>Confirmation: ${t.confirmation}</p>
+            <p>Followed Rules: ${t.followRules}</p>
+        </div>`;
+    });
+}
+
+function addTrade(trade) {
+    trades.push(trade);
+    localStorage.setItem(week, JSON.stringify(trades));
+    calculateStreaks();
+    renderTrades();
+    updateStats();
+}
+
+tradeForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    calculateStreaks();
+    if(trades.length >= 6 || lossStreak >=2 || winStreak >=3) {
+        alert('Stop trading! Rules reached.');
+        return;
+    }
+    const trade = {
+        result: document.getElementById('result').value,
+        strategy: document.getElementById('strategy').value,
+        reason: document.getElementById('reason').value,
+        confirmation: document.getElementById('confirmation').value,
+        followRules: document.getElementById('followRules').value
+    };
+    addTrade(trade);
+    tradeForm.reset();
+});
+
+deleteWeekBtn.addEventListener('click', () => {
+    if(confirm('Are you sure you want to delete this week’s data?')) {
+        localStorage.removeItem(week);
+        trades = [];
+        winStreak = 0;
+        lossStreak = 0;
+        renderTrades();
+        updateStats();
+    }
+});
+
+// Initial load
+calculateStreaks();
+renderTrades();
+updateStats();
+</script>
+</main>
+</body>
+</html>
