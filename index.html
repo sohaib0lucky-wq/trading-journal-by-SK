@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+<div id="statusBar" style="padding:10px; font-weight:bold; text-align:center; background-color:green; color:white;">
+  ACTIVE
+</div><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -209,3 +211,48 @@ updateStats();
 </main>
 </body>
 </html>
+function checkRules(trades) {
+  let statusBar = document.getElementById("statusBar");
+
+  let totalTrades = trades.length;
+
+  let winsInRow = 0;
+  let lossesInRow = 0;
+
+  for (let i = trades.length - 1; i >= 0; i--) {
+    if (trades[i] === "win") {
+      winsInRow++;
+      lossesInRow = 0;
+    } else if (trades[i] === "loss") {
+      lossesInRow++;
+      winsInRow = 0;
+    }
+
+    if (winsInRow >= 3 || lossesInRow >= 2) break;
+  }
+
+  if (winsInRow >= 3) {
+    statusBar.innerText = "STOP (3 Wins in a Row)";
+    statusBar.style.backgroundColor = "red";
+    return true;
+  }
+
+  if (lossesInRow >= 2) {
+    statusBar.innerText = "STOP (2 Losses in a Row)";
+    statusBar.style.backgroundColor = "red";
+    return true;
+  }
+if (checkRules(trades)) {
+  alert("You must stop trading!");
+  return;
+}
+  if (totalTrades >= 6) {
+    statusBar.innerText = "STOP (6 Trades Reached)";
+    statusBar.style.backgroundColor = "red";
+    return true;
+  }
+
+  statusBar.innerText = "ACTIVE";
+  statusBar.style.backgroundColor = "green";
+  return false;
+}let stopped = checkRules(trades);
